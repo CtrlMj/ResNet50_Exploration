@@ -31,7 +31,7 @@ class Resblock(nn.Module):
 
 
 class BigRes(nn.Module):
-    def __init__(self, image_channels, out_classes=10, layers=[(3, 64, 2), (4, 128, 2) (6, 256, 2), (3, 512, 2)]):
+    def __init__(self, image_channels=3, out_classes=10, layers=[(3, 64, 2), (4, 128, 2) (6, 256, 2), (3, 512, 2)]):
         super(BigRes, self).__init__()
         self.in_channels = layers[0][1]
         self.out_channels = 4*layers[-1][1]

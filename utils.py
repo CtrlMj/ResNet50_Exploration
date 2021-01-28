@@ -6,6 +6,9 @@ from imgaug import augmenters as iaa
 from cv2 import resize
 import shutil
 import numpy as np
+sys.path.insert(1, "./LSUV-pytorch")   # For LSUV initialization method. from https://github.com/ducha-aiki/LSUV-pytorch/
+from LSUV import LSUVinit
+
 
 class AugTransform:
     def __init__(self, augpipeline):
@@ -34,9 +37,18 @@ def init_weights_kaiming(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         torch.nn.init.kaiming_normal_(m.weight)
  
-
-
-
+def init_weights_LSUV(data, model, n_points=64):
+    data = []
+    iterator = iter(data)
+    for i in range(n_points):
+        image = next(iterator)[0]
+        image = image.permute(1, 2, 0)
+        image = image.numpy()
+        image = resize(image, (224, 224))
+        image = torch.from_numpy(image).unsqueeze(0)
+        data.append(image)
+    model = LSUVinit(model, torch.stack(data, dim=0).to(device), needed_std = 1.0, std_tol = 0.1, max_attempts = 10, needed_mean = 0., do_orthonorm = True, cuda=True)
+    return model
 
 
 def get_lr(optimizer):

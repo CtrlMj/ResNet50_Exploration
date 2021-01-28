@@ -5,6 +5,7 @@ from torchvision.transforms import ToTensor
 from imgaug import augmenters as iaa
 from cv2 import resize
 import shutil
+import numpy as np
 
 class AugTransform:
     def __init__(self, augpipeline):
@@ -32,6 +33,9 @@ def init_weights_normal(m, std=1, mean=0):
 def init_weights_kaiming(m):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         torch.nn.init.kaiming_normal_(m.weight)
+ 
+
+
 
 
 
@@ -65,3 +69,87 @@ def aggrAugs(*batches, approach='mean'):
         return torch.max(predictions, dim=0).values 
       
 
+def train(Res50, train_dataloader, augment = None, aug_prob=0.0):
+    Res50.train()
+    total_loss = 0
+    total_preds = 0
+    for step, batch in enumerate(train_dataloader):
+        if step % 512 == 0 and step != 0:
+          print(f"batch {step} ----loss: {loss.item()}")
+          #writer.add_scalar("optimizer/lr", get_lr(optimizer), step)
+    
+        images, labels = batch[0], batch[1]
+        Res50.zero_grad()
+        predictions = Res50(images.to(device))
+        loss = loss_fn(predictions.to(device), labels.to(device))
+        loss.backward()
+        optimizer.step()
+        total_loss += float(loss.item())
+        total_preds += 1
+       
+        if np.random.rand() < aug_prob:
+          for i in range(5):
+            images = augment(images)
+            Res50.zero_grad()
+            predictions = Res50(images.to(device))
+            loss = loss_fn(predictions.to(device), labels.to(device))
+            loss.backward()
+            optimizer.step()
+            total_loss += float(loss.item())
+            total_preds += 1
+
+    return total_loss / total_preds
+
+
+
+def val(Res50, test_dataloader, test_augments: List):
+    Res50.eval()
+
+    total_loss = 0
+    total_steps = 0
+    total_corrects = 0
+    total_preds = 0
+
+    for step, batch in enumerate(test_dataloader):
+    # if step % 512 == 0 and step != 0:
+    #   print(f"test step {step} --- loss: {loss.item()}")
+
+        images, labels = batch[0], batch[1]
+        with torch.no_grad():
+            predictions = []
+            predictions.append(Res50(images.to(device)))
+            for aug in test_augments:
+                predictions.append(aug(image).to(device))
+#             rotated = rotate(images)
+#             predictions1 = Res50(rotated.to(device))
+#             scaledx = scaleX(images)
+#             predictions2 = Res50(scaledx.to(device))
+#             scaledx2 = scaleX2(images)
+#             predictions3 = Res50(scaledx2.to(device))
+#             scaledy = scaleY(images)
+#             predictions4 = Res50(scaledy.to(device))
+#             scaledy2 = scaleY2(images)
+#             predictions5 = Res50(scaledy2.to(device))
+#             flipped = flip(images)
+#             predictions6 = Res50(flipped.to(device))
+#             translatedx = translateX(images)
+#             predictions7 = Res50(translatedx.to(device))
+#             translatedy = translateY(images)
+#             predictions8 = Res50(translatedy.to(device))
+#             cropped = cropandpad(images)
+#             predictions9 = Res50(cropped.to(device))
+
+            prediction = aggrAugs(predictions, approach='mean')
+
+            loss = loss_fn(prediction.to(device), labels.to(device))
+            total_loss += float(loss.item())
+            total_steps += 1
+
+
+            total_corrects += (torch.argmax(predictions, 1) == labels.to(device)).sum().item()
+            total_preds += labels.size(0)
+
+    mean_loss = total_loss / total_steps
+    mean_accuracy = total_corrects / total_preds
+  
+    return mean_loss, mean_accuracy

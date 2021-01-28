@@ -81,7 +81,7 @@ def aggrAugs(*batches, approach='mean'):
         return torch.max(predictions, dim=0).values 
       
 
-def train(Res50, train_dataloader, augment = None, aug_prob=0.0):
+def train(Res50, train_dataloader, loss_fn, optimizer, augment = None, aug_prob=0.0):
     Res50.train()
     total_loss = 0
     total_preds = 0
@@ -114,7 +114,7 @@ def train(Res50, train_dataloader, augment = None, aug_prob=0.0):
 
 
 
-def val(Res50, test_dataloader, test_augments: List):
+def val(Res50, test_dataloader, loss_fn, optimizer, test_augments: List):
     Res50.eval()
 
     total_loss = 0
